@@ -1,14 +1,13 @@
 package main
 
 import (
-	"github.com/BoSunesen/pointsofinterest/webapi/handlers"
+	"github.com/BoSunesen/pointsofinterest/webapi/initialization"
 	"log"
 	"net/http"
 )
 
 func main() {
-	http.Handle("/ping/", handlers.LoggingDecorator{handlers.PingHandler{}, "Ping"})
-	http.Handle("/poi/", handlers.LoggingDecorator{handlers.PoiHandler{}, "POI"})
+	initialization.Initialize()
 	err := http.ListenAndServe(":8080", nil)
 	log.Fatal(err)
 }
