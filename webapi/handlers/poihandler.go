@@ -3,26 +3,40 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"sync"
+	"time"
 )
 
 type PoiHandler struct {
+	cache *poiCache
 }
 
-type PoiData struct {
-	Latitude  string
-	Longitude string
-	Title     string
+func NewPoiHandler() *PoiHandler {
+	poiData := make([]poiData, 0)
+	expires := time.Now().Add(-42 * time.Hour)
+	cache := &poiCache{data: &poiData, dataMutex: &sync.RWMutex{}, refreshMutex: &sync.Mutex{}, expires: &expires}
+	cache.refreshIfNeeded()
+	return &PoiHandler{cache}
 }
 
-func (handler PoiHandler) ServeHttpInner(w http.ResponseWriter, r *http.Request) error {
-	poiBytes, err := json.Marshal(PoiData{"123", "123", "Dummy POI"})
+func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) error {
+	go handler.cache.refreshIfNeeded()
+
+	jsonBytes, err := handler.readCache()
 	if err != nil {
 		return err
 	}
-	poiString := string(poiBytes)
-	log.Println(poiString)
-	fmt.Fprint(w, poiString)
+
+	fmt.Fprint(w, string(jsonBytes))
 	return nil
+}
+
+func (handler *PoiHandler) readCache() ([]byte, error) {
+	handler.cache.dataMutex.RLock()
+	defer handler.cache.dataMutex.RUnlock()
+
+	//TODO Only return POI's matching input (type, location, opening hours)
+
+	return json.Marshal(handler.cache.data)
 }

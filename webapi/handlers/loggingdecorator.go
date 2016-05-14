@@ -1,24 +1,39 @@
 package handlers
 
 import (
+	"fmt"
+	"html"
 	"log"
 	"net/http"
 )
 
-type AppHandler interface {
-	ServeHttpInner(http.ResponseWriter, *http.Request) error
+type HttpHandler interface {
+	ServeHttp(http.ResponseWriter, *http.Request) error
 }
 
 type LoggingDecorator struct {
-	Handler AppHandler
-	AppName string
+	Handler HttpHandler
+	Route   string
 }
 
-func (decorator LoggingDecorator) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	err := decorator.Handler.ServeHttpInner(w, r)
+func (decorator *LoggingDecorator) ServeHTTP(w http.ResponseWriter, request *http.Request) {
+	path := html.EscapeString(request.URL.Path)
+	log.Printf("Serving %q", path)
+	defer log.Printf("Served %q", path)
+
+	defer func() {
+		if r := recover(); r != nil {
+			errorString := fmt.Sprint(r)
+			log.Printf("Panic while handling route %q (path: %s): %q", decorator.Route, path, errorString)
+			http.Error(w, errorString, http.StatusInternalServerError)
+		}
+	}()
+
+	err := decorator.Handler.ServeHttp(w, request)
+
 	if err != nil {
-		var errorString = err.Error()
-		log.Printf("Error from %s: %q", decorator.AppName, errorString)
+		errorString := err.Error()
+		log.Printf("Error while handling route %q (path: %s): %q", decorator.Route, path, errorString)
 		http.Error(w, errorString, http.StatusInternalServerError)
 	}
 }

@@ -9,7 +9,7 @@ import (
 type PingHandler struct {
 }
 
-func (handler PingHandler) ServeHttpInner(w http.ResponseWriter, r *http.Request) error {
+func (handler PingHandler) ServeHttp(w http.ResponseWriter, r *http.Request) error {
 	fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
 	return nil
 }
