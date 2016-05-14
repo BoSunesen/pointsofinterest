@@ -8,19 +8,21 @@ import (
 )
 
 func Initialize() {
-	//TODO Extract method
-	const poiUrl string = "/poi/"
-	poiHandler := handlers.NewPoiHandler()
-	http.Handle(poiUrl, &handlers.LoggingDecorator{poiHandler, poiUrl})
+	handle("/poi/", handlers.NewPoiHandler())
 
-	const pingUrl string = "/ping/"
-	http.Handle(pingUrl, &handlers.LoggingDecorator{handlers.PingHandler{}, pingUrl})
+	const pingRoute string = "/ping/"
+	handle(pingRoute, handlers.PingHandler{})
+
 	//TODO Better routing
 	//TODO favicon.ico
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := html.EscapeString(r.URL.Path)
 		log.Printf("Redirecting %q", path)
 		defer log.Printf("Redirected %q", path)
-		http.Redirect(w, r, pingUrl, http.StatusFound)
+		http.Redirect(w, r, pingRoute, http.StatusFound)
 	})
+}
+
+func handle(route string, handler handlers.HttpHandler) {
+	http.Handle(route, &handlers.LoggingDecorator{handler, route})
 }
