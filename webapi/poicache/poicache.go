@@ -6,10 +6,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
 
+//TODO Less pointy?
 type PoiCache struct {
 	data         *[]PoiData
 	dataMutex    *sync.RWMutex
@@ -48,7 +50,7 @@ func (cache *PoiCache) RefreshIfNeeded() {
 }
 
 func (cache *PoiCache) refresh() error {
-	poiBytes, err := getRemoteData()
+	poiBytes, err := getRemoteData(10)
 	if err != nil {
 		return err
 	}
@@ -75,7 +77,7 @@ func (cache *PoiCache) refresh() error {
 	return nil
 }
 
-func getRemoteData() ([]byte, error) {
+func getRemoteData(retries int) ([]byte, error) {
 	//TODO API key
 	const remoteUrl string = "https://data.sfgov.org/resource/6a9r-agq8.json?status=APPROVED"
 	request, err := http.NewRequest(http.MethodGet, remoteUrl, nil)
@@ -84,6 +86,10 @@ func getRemoteData() ([]byte, error) {
 	}
 
 	request.Header.Set("Accept", "application/json;charset=utf-8")
+	if openDataAppToken := os.Getenv("OpenDataAppToken"); openDataAppToken != "" {
+		request.Header.Set("X-App-Token", openDataAppToken)
+	}
+
 	client := http.Client{}
 	res, err := client.Do(request)
 	if err != nil {
@@ -98,6 +104,13 @@ func getRemoteData() ([]byte, error) {
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, fmt.Errorf("Received status code %v while trying to refresh cache. Response body: %v", res.StatusCode, string(bytes))
+	}
+
+	if res.StatusCode == 202 {
+		if retries <= 0 {
+			return nil, fmt.Errorf("No more retries while trying to refresh cache. Response body: %v", string(bytes))
+		}
+		return getRemoteData(retries - 1)
 	}
 
 	return bytes, nil
