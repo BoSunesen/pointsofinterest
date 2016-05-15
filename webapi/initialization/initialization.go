@@ -17,8 +17,8 @@ func Initialize() {
 	//TODO favicon.ico
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := html.EscapeString(r.URL.Path)
-		log.Printf("Redirecting %q", path)
-		defer log.Printf("Redirected %q", path)
+		log.Printf("Redirecting %v", path)
+		defer log.Printf("Redirected %v", path)
 		http.Redirect(w, r, pingRoute, http.StatusFound)
 	})
 }

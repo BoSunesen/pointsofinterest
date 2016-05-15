@@ -2,7 +2,6 @@ package poicache
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -29,7 +28,7 @@ func NewPoiCache() *PoiCache {
 func (cache *PoiCache) RefreshIfNeeded() {
 	//TODO Load test
 	if cache.expires.Before(time.Now()) {
-		log.Printf("Cache expired at %q waiting for refresh lock", cache.expires)
+		log.Printf("Cache expired at %v waiting for refresh lock", cache.expires)
 
 		cache.refreshMutex.Lock()
 		defer cache.refreshMutex.Unlock()
@@ -38,18 +37,21 @@ func (cache *PoiCache) RefreshIfNeeded() {
 			log.Println("Refreshing cache")
 			err := cache.refresh()
 			if err != nil {
-				log.Printf("Error while refreshing cache: %q", err)
+				log.Printf("Error while refreshing cache: %v", err)
 			} else {
-				log.Printf("Cache refreshed. Expires again at %q", cache.expires)
+				log.Printf("Cache refreshed. Expires again at %v", cache.expires)
 			}
 		} else {
-			log.Printf("Got refresh lock, but cache is no longer expired. Expires again at %q", cache.expires)
+			log.Printf("Got refresh lock, but cache is no longer expired. Expires again at %v", cache.expires)
 		}
 	}
 }
 
 func (cache *PoiCache) refresh() error {
 	poiBytes, err := getRemoteData()
+	if err != nil {
+		return err
+	}
 
 	poiData := make([]PoiData, 0)
 	err = json.Unmarshal(poiBytes, &poiData)
@@ -89,13 +91,16 @@ func getRemoteData() ([]byte, error) {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode < 100 || res.StatusCode >= 300 {
-		errorString := fmt.Sprintf("Received status code %s while trying to refresh cache", res.StatusCode)
-		log.Println(errorString)
-		return nil, errors.New(errorString)
+	bytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	return ioutil.ReadAll(res.Body)
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, fmt.Errorf("Received status code %v while trying to refresh cache. Response body: %v", res.StatusCode, string(bytes))
+	}
+
+	return bytes, nil
 }
 
 func (cache *PoiCache) ReadData() *[]PoiData {
