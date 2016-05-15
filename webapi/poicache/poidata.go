@@ -1,6 +1,6 @@
-package handlers
+package poicache
 
-type poiData struct {
+type PoiData struct {
 	Applicant    string
 	Address      string
 	Dayshours    string

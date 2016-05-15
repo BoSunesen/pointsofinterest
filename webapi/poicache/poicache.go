@@ -1,4 +1,4 @@
-package handlers
+package poicache
 
 import (
 	"encoding/json"
@@ -10,14 +10,22 @@ import (
 )
 
 //TODO Move poiCache to own module
-type poiCache struct {
-	data         *[]poiData
+type PoiCache struct {
+	data         *[]PoiData
 	dataMutex    *sync.RWMutex
 	refreshMutex *sync.Mutex
 	expires      *time.Time
 }
 
-func (cache *poiCache) refreshIfNeeded() {
+func NewPoiCache() *PoiCache {
+	poiData := make([]PoiData, 0)
+	expires := time.Now().Add(-42 * time.Hour)
+	cache := PoiCache{data: &poiData, dataMutex: &sync.RWMutex{}, refreshMutex: &sync.Mutex{}, expires: &expires}
+	cache.RefreshIfNeeded()
+	return &cache
+}
+
+func (cache *PoiCache) RefreshIfNeeded() {
 	//TODO Load test
 	if cache.expires.Before(time.Now()) {
 		log.Printf("Cache expired at %q waiting for refresh lock", cache.expires)
@@ -31,7 +39,7 @@ func (cache *poiCache) refreshIfNeeded() {
 			if err != nil {
 				log.Printf("Error while refreshing cache: %q", err)
 			} else {
-				log.Println("Cache refreshed")
+				log.Printf("Cache refreshed. Expires again at %q", cache.expires)
 			}
 		} else {
 			log.Printf("Got refresh lock, but cache is no longer expired. Expires again at %q", cache.expires)
@@ -39,10 +47,10 @@ func (cache *poiCache) refreshIfNeeded() {
 	}
 }
 
-func (cache *poiCache) refresh() error {
+func (cache *PoiCache) refresh() error {
 	poiBytes, err := getRemoteData()
 
-	poiData := make([]poiData, 0)
+	poiData := make([]PoiData, 0)
 	err = json.Unmarshal(poiBytes, &poiData)
 	if err != nil {
 		return err
@@ -84,4 +92,13 @@ func getRemoteData() ([]byte, error) {
 
 	//TODO Check http status before reading body
 	return ioutil.ReadAll(res.Body)
+}
+
+func (cache *PoiCache) ReadData() *[]PoiData {
+	cache.dataMutex.RLock()
+	defer cache.dataMutex.RUnlock()
+
+	poiData := make([]PoiData, len(*cache.data))
+	copy(poiData, *cache.data)
+	return &poiData
 }
