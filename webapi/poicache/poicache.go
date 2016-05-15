@@ -3,8 +3,8 @@ package poicache
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/BoSunesen/pointsofinterest/webapi/logging"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -17,40 +17,42 @@ type PoiCache struct {
 	dataMutex    *sync.RWMutex
 	refreshMutex *sync.Mutex
 	expires      *time.Time
+	//TODO Hard expire
+	logger       logging.Logger
 }
 
-func NewPoiCache() *PoiCache {
+func NewPoiCache(logger logging.Logger) *PoiCache {
 	poiData := make([]PoiData, 0)
 	expires := time.Now().Add(-42 * time.Hour)
-	cache := PoiCache{data: &poiData, dataMutex: &sync.RWMutex{}, refreshMutex: &sync.Mutex{}, expires: &expires}
-	cache.RefreshIfNeeded()
+	cache := PoiCache{data: &poiData, dataMutex: &sync.RWMutex{}, refreshMutex: &sync.Mutex{}, expires: &expires, logger: logger}
+	cache.RefreshIfNeeded(nil)
 	return &cache
 }
 
-func (cache *PoiCache) RefreshIfNeeded() {
+func (cache *PoiCache) RefreshIfNeeded(r *http.Request) {
 	//TODO Load test
 	if cache.expires.Before(time.Now()) {
-		log.Printf("Cache expired at %v waiting for refresh lock", cache.expires)
+		cache.logger.Infof(r, "Cache expired at %v waiting for refresh lock", cache.expires)
 
 		cache.refreshMutex.Lock()
 		defer cache.refreshMutex.Unlock()
 
 		if cache.expires.Before(time.Now()) {
-			log.Println("Refreshing cache")
-			err := cache.refresh()
+			cache.logger.Infof(r, "Refreshing cache")
+			err := cache.refresh(r)
 			if err != nil {
-				log.Printf("Error while refreshing cache: %v", err)
+				cache.logger.Infof(r, "Error while refreshing cache: %v", err)
 			} else {
-				log.Printf("Cache refreshed. Expires again at %v", cache.expires)
+				cache.logger.Infof(r, "Cache refreshed. Expires again at %v", cache.expires)
 			}
 		} else {
-			log.Printf("Got refresh lock, but cache is no longer expired. Expires again at %v", cache.expires)
+			cache.logger.Infof(r, "Got refresh lock, but cache is no longer expired. Expires again at %v", cache.expires)
 		}
 	}
 }
 
-func (cache *PoiCache) refresh() error {
-	poiBytes, err := getRemoteData(10)
+func (cache *PoiCache) refresh(r *http.Request) error {
+	poiBytes, err := cache.getRemoteData(r, 10)
 	if err != nil {
 		return err
 	}
@@ -61,12 +63,12 @@ func (cache *PoiCache) refresh() error {
 		return err
 	}
 
-	log.Println("Waiting for cache write lock")
+	cache.logger.Infof(r, "Waiting for cache write lock")
 
 	cache.dataMutex.Lock()
 	defer cache.dataMutex.Unlock()
 
-	log.Println("Got cache write lock")
+	cache.logger.Infof(r, "Got cache write lock")
 
 	cache.data = &poiData
 
@@ -77,7 +79,7 @@ func (cache *PoiCache) refresh() error {
 	return nil
 }
 
-func getRemoteData(retries int) ([]byte, error) {
+func (cache *PoiCache) getRemoteData(r *http.Request, retries int) ([]byte, error) {
 	//TODO API key
 	const remoteUrl string = "https://data.sfgov.org/resource/6a9r-agq8.json?status=APPROVED"
 	request, err := http.NewRequest(http.MethodGet, remoteUrl, nil)
@@ -87,9 +89,11 @@ func getRemoteData(retries int) ([]byte, error) {
 
 	request.Header.Set("Accept", "application/json;charset=utf-8")
 	if openDataAppToken := os.Getenv("OpenDataAppToken"); openDataAppToken != "" {
+		cache.logger.Infof(r, "Setting X-App-Token header")
 		request.Header.Set("X-App-Token", openDataAppToken)
 	}
 
+	//TODO https://cloud.google.com/appengine/docs/go/urlfetch/
 	client := http.Client{}
 	res, err := client.Do(request)
 	if err != nil {
@@ -110,7 +114,7 @@ func getRemoteData(retries int) ([]byte, error) {
 		if retries <= 0 {
 			return nil, fmt.Errorf("No more retries while trying to refresh cache. Response body: %v", string(bytes))
 		}
-		return getRemoteData(retries - 1)
+		return cache.getRemoteData(r, retries-1)
 	}
 
 	return bytes, nil

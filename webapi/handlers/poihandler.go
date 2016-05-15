@@ -3,21 +3,23 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/BoSunesen/pointsofinterest/webapi/logging"
 	"github.com/BoSunesen/pointsofinterest/webapi/poicache"
 	"net/http"
 )
 
 type PoiHandler struct {
-	cache *poicache.PoiCache
+	cache  *poicache.PoiCache
+	logger logging.Logger
 }
 
-func NewPoiHandler() *PoiHandler {
-	cache := poicache.NewPoiCache()
-	return &PoiHandler{cache}
+func NewPoiHandler(logger logging.Logger) *PoiHandler {
+	cache := poicache.NewPoiCache(logger)
+	return &PoiHandler{cache, logger}
 }
 
 func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) error {
-	go handler.cache.RefreshIfNeeded()
+	go handler.cache.RefreshIfNeeded(r)
 
 	poiData := handler.cache.ReadData()
 

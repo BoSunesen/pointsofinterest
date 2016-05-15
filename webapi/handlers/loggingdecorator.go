@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/BoSunesen/pointsofinterest/webapi/logging"
 	"html"
-	"log"
 	"net/http"
 )
 
@@ -14,17 +14,19 @@ type HttpHandler interface {
 type LoggingDecorator struct {
 	Handler HttpHandler
 	Route   string
+	//TODO LoggerFactory?
+	Logger  logging.Logger
 }
 
 func (decorator *LoggingDecorator) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 	path := html.EscapeString(request.URL.Path)
-	log.Printf("Serving %v", path)
-	defer log.Printf("Served %v", path)
+	decorator.Logger.Debugf(request, "Serving %v", path)
+	defer decorator.Logger.Debugf(request, "Served %v", path)
 
 	defer func() {
 		if r := recover(); r != nil {
 			errorString := fmt.Sprint(r)
-			log.Printf("Panic while handling route %v (path: %v): %v", decorator.Route, path, errorString)
+			decorator.Logger.Criticalf(request, "Panic while handling route %v (path: %v): %v", decorator.Route, path, errorString)
 			http.Error(w, errorString, http.StatusInternalServerError)
 		}
 	}()
@@ -33,7 +35,7 @@ func (decorator *LoggingDecorator) ServeHTTP(w http.ResponseWriter, request *htt
 
 	if err != nil {
 		errorString := err.Error()
-		log.Printf("Error while handling route %v (path: %v): %v", decorator.Route, path, errorString)
+		decorator.Logger.Errorf(request, "Error while handling route %v (path: %v): %v", decorator.Route, path, errorString)
 		http.Error(w, errorString, http.StatusInternalServerError)
 	}
 }
