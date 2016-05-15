@@ -2,6 +2,8 @@ package poicache
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -9,7 +11,6 @@ import (
 	"time"
 )
 
-//TODO Move poiCache to own module
 type PoiCache struct {
 	data         *[]PoiData
 	dataMutex    *sync.RWMutex
@@ -83,14 +84,17 @@ func getRemoteData() ([]byte, error) {
 	request.Header.Set("Accept", "application/json;charset=utf-8")
 	client := http.Client{}
 	res, err := client.Do(request)
-	if res.Body != nil {
-		defer res.Body.Close()
-	}
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
-	//TODO Check http status before reading body
+	if res.StatusCode < 100 || res.StatusCode >= 300 {
+		errorString := fmt.Sprintf("Received status code %s while trying to refresh cache", res.StatusCode)
+		log.Println(errorString)
+		return nil, errors.New(errorString)
+	}
+
 	return ioutil.ReadAll(res.Body)
 }
 
