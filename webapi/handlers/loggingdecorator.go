@@ -23,8 +23,8 @@ type LoggingDecorator struct {
 func (decorator *LoggingDecorator) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 	ctx := decorator.ContextFactory.CreateContext(request)
 	path := html.EscapeString(request.URL.Path)
-	decorator.Logger.Debugf(ctx, "Serving %v", path)
-	defer decorator.Logger.Debugf(ctx, "Served %v", path)
+	decorator.Logger.Debugf(ctx, "Serving route %v (path: %v)", decorator.Route, path)
+	defer decorator.Logger.Debugf(ctx, "Served route %v (path: %v)", decorator.Route, path)
 
 	defer func() {
 		if r := recover(); r != nil {

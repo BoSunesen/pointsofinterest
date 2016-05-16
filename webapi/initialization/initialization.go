@@ -30,20 +30,18 @@ func NewWebApiInitializer(
 }
 
 func (i WebApiInitializer) Initialize() {
-	handle("/poi/", handlers.NewPoiHandler(i.logger, i.contextFactory, i.clientFactory, i.workerFactory), i.logger, i.contextFactory)
-
-	const pingRoute string = "/ping/"
-	handle(pingRoute, handlers.PingHandler{}, i.logger, i.contextFactory)
-
-	//TODO Better routing
-	//TODO favicon.ico
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		ctx := i.contextFactory.CreateContext(r)
 		path := html.EscapeString(r.URL.Path)
-		i.logger.Debugf(ctx, "Redirecting %v", path)
-		defer i.logger.Debugf(ctx, "Redirected %v", path)
-		http.Redirect(w, r, pingRoute, http.StatusFound)
+		i.logger.Debugf(ctx, "Serving favicon.ico, path: %v", path)
+		defer i.logger.Debugf(ctx, "Served favicon.ico, path: %v", path)
+		http.ServeFile(w, r, "favicon.ico")
 	})
+
+	poiHandler := handlers.NewPoiHandler(i.logger, i.contextFactory, i.clientFactory, i.workerFactory)
+	handle("/poi", poiHandler, i.logger, i.contextFactory)
+	handle("/poi/", poiHandler, i.logger, i.contextFactory)
+	handle("/ping", handlers.PingHandler{}, i.logger, i.contextFactory)
 }
 
 func handle(route string, handler handlers.HttpHandler, logger logging.Logger, contextFactory factories.ContextFactory) {
