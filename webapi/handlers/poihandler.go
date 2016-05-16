@@ -39,6 +39,7 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
+	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	fmt.Fprint(w, string(jsonBytes))
 	return nil
 }
