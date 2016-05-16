@@ -14,7 +14,7 @@ type ContextFactory interface {
 }
 
 type BackgroundWorker interface {
-	DoWork(r *http.Request) error
+	DoWork(ctx context.Context) error
 }
 
 type WorkerFactory interface {

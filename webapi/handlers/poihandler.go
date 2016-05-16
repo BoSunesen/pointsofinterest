@@ -11,19 +11,24 @@ import (
 
 type PoiHandler struct {
 	cache          *poicache.PoiCache
+	refresher      *poicache.PoiCacheRefresher
 	logger         logging.Logger
 	contextFactory factories.ContextFactory
 }
 
 func NewPoiHandler(logger logging.Logger, contextFactory factories.ContextFactory, clientFactory factories.ClientFactory, workerFactory factories.WorkerFactory) *PoiHandler {
-	cache := poicache.NewPoiCache(logger, clientFactory, workerFactory)
-	return &PoiHandler{cache, logger, contextFactory}
+	cache, refresher := poicache.NewPoiCache(logger, clientFactory, workerFactory)
+	return &PoiHandler{cache, refresher, logger, contextFactory}
 }
 
 func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) error {
-	err := handler.cache.BackgroundRefresh(r)
+	ctx := handler.contextFactory.CreateContext(r)
+	err := handler.refresher.Refresh(ctx)
 	if err != nil {
-		handler.logger.Errorf(handler.contextFactory.CreateContext(r), "Could not start background refresh of cache: %v", err)
+		handler.logger.Errorf(ctx, "Error while refreshing cache: %v", err)
+		if handler.cache.IsStale() {
+			return err
+		}
 	}
 
 	poiData := handler.cache.ReadData()

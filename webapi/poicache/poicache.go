@@ -13,53 +13,96 @@ import (
 	"time"
 )
 
-//TODO Less pointy?
 type PoiCache struct {
-	data          *[]PoiData //TODO Use MemCache to store data?
+	data          *[]PoiData
 	dataMutex     *sync.RWMutex
 	refreshMutex  *sync.Mutex
-	expires       *time.Time //TODO Hard expire as well as soft
+	staleAt       *time.Time
+	refreshAt     *time.Time
 	logger        logging.Logger
 	clientFactory factories.ClientFactory
-	refresher     factories.BackgroundWorker
 }
 
-func NewPoiCache(logger logging.Logger, clientFactory factories.ClientFactory, workerFactory factories.WorkerFactory) *PoiCache {
-	poiData := make([]PoiData, 0)
-	expires := time.Now().Add(-42 * time.Hour)
-	cache := PoiCache{data: &poiData, dataMutex: &sync.RWMutex{}, refreshMutex: &sync.Mutex{}, expires: &expires, logger: logger, clientFactory: clientFactory}
+type PoiCacheRefresher struct {
+	refreshWorker factories.BackgroundWorker
+	cache         *PoiCache
+}
 
-	cache.refresher = workerFactory.CreateBackgroundWorker("RefreshIfNeeded", func(delayedContext context.Context) {
-		//TODO cache variable bound to refresher via closure, is that okay?
-		cache.RefreshIfNeeded(delayedContext)
+func NewPoiCache(logger logging.Logger, clientFactory factories.ClientFactory, workerFactory factories.WorkerFactory) (*PoiCache, *PoiCacheRefresher) {
+	poiData := make([]PoiData, 0)
+	staleAt := time.Now().Add(-42 * time.Hour)
+	refreshAt := time.Now().Add(-42 * time.Hour)
+	cache := &PoiCache{
+		&poiData,
+		&sync.RWMutex{},
+		&sync.Mutex{},
+		&staleAt,
+		&refreshAt,
+		logger,
+		clientFactory,
+	}
+
+	refresher := workerFactory.CreateBackgroundWorker("backgroundRefresh", func(delayedContext context.Context) {
+		cache.backgroundRefresh(delayedContext)
 	})
 
-	return &cache
+	return cache, &PoiCacheRefresher{refresher, cache}
 }
 
-func (cache *PoiCache) BackgroundRefresh(r *http.Request) error {
-	return cache.refresher.DoWork(r)
+func (refresher *PoiCacheRefresher) Refresh(ctx context.Context) error {
+	if refresher.cache.IsStale() {
+		return refresher.cache.immediateRefresh(ctx)
+	}
+	if refresher.cache.NeedsRefresh() {
+		return refresher.refreshWorker.DoWork(ctx)
+	}
+	return nil
 }
 
-func (cache *PoiCache) RefreshIfNeeded(ctx context.Context) {
-	//TODO Load test
-	if cache.expires.Before(time.Now()) {
-		cache.logger.Infof(ctx, "Cache expired at %v waiting for refresh lock", cache.expires)
+func (cache *PoiCache) IsStale() bool {
+	return cache.staleAt.Before(time.Now())
+}
 
-		cache.refreshMutex.Lock()
-		defer cache.refreshMutex.Unlock()
+func (cache *PoiCache) NeedsRefresh() bool {
+	return cache.refreshAt.Before(time.Now())
+}
 
-		if cache.expires.Before(time.Now()) {
-			cache.logger.Infof(ctx, "Refreshing cache")
-			err := cache.refresh(ctx)
-			if err != nil {
-				cache.logger.Infof(ctx, "Error while refreshing cache: %v", err)
-			} else {
-				cache.logger.Infof(ctx, "Cache refreshed. Expires again at %v", cache.expires)
-			}
+func (cache *PoiCache) immediateRefresh(ctx context.Context) error {
+	cache.logger.Warningf(ctx, "Cache went stale at %v, waiting for refresh lock", cache.staleAt)
+
+	cache.refreshMutex.Lock()
+	defer cache.refreshMutex.Unlock()
+
+	if cache.IsStale() {
+		cache.logger.Warningf(ctx, "Refreshing stale cache")
+		err := cache.refresh(ctx)
+		if err != nil {
+			return err
 		} else {
-			cache.logger.Infof(ctx, "Got refresh lock, but cache is no longer expired. Expires again at %v", cache.expires)
+			cache.logger.Warningf(ctx, "Stale cache refreshed. Refresh again at %v, stale at %v", cache.refreshAt, cache.staleAt)
 		}
+	} else {
+		cache.logger.Warningf(ctx, "Got refresh lock, but cache no longer stale. Refresh again at %v, stale at %v", cache.refreshAt, cache.staleAt)
+	}
+	return nil
+}
+
+func (cache *PoiCache) backgroundRefresh(ctx context.Context) {
+	cache.logger.Infof(ctx, "Cache needed refresh at %v, waiting for refresh lock", cache.refreshAt)
+
+	cache.refreshMutex.Lock()
+	defer cache.refreshMutex.Unlock()
+
+	if cache.NeedsRefresh() {
+		cache.logger.Infof(ctx, "Refreshing cache")
+		err := cache.refresh(ctx)
+		if err != nil {
+			cache.logger.Infof(ctx, "Error while refreshing cache: %v", err)
+		} else {
+			cache.logger.Infof(ctx, "Cache refreshed. Refresh again at %v", cache.refreshAt)
+		}
+	} else {
+		cache.logger.Infof(ctx, "Got refresh lock, but cache no longer needs refresh. Refresh again at %v", cache.refreshAt)
 	}
 }
 
@@ -84,9 +127,11 @@ func (cache *PoiCache) refresh(ctx context.Context) error {
 
 	cache.data = &poiData
 
-	//TODO How often to refresh
-	expires := time.Now().Add(20 * time.Second)
-	cache.expires = &expires
+	staleAt := time.Now().Add(4 * time.Hour)
+	cache.staleAt = &staleAt
+
+	refreshAt := time.Now().Add(30 * time.Second)
+	cache.refreshAt = &refreshAt
 
 	return nil
 }

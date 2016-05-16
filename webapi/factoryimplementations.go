@@ -18,21 +18,17 @@ func (f GoContextFactory) CreateContext(r *http.Request) context.Context {
 	return context.TODO()
 }
 
-type GoWorkerFactory struct {
-	ContextFactory factories.ContextFactory
-}
+type GoWorkerFactory struct{}
 
 func (factory GoWorkerFactory) CreateBackgroundWorker(key string, workFunction func(context.Context)) factories.BackgroundWorker {
-	return GoWorker{workFunction, factory.ContextFactory}
+	return GoWorker{workFunction}
 }
 
 type GoWorker struct {
-	workFunction   func(context.Context)
-	contextFactory factories.ContextFactory
+	workFunction func(context.Context)
 }
 
-func (w GoWorker) DoWork(r *http.Request) error {
-	ctx := w.contextFactory.CreateContext(r)
+func (w GoWorker) DoWork(ctx context.Context) error {
 	go w.workFunction(ctx)
 	return nil
 }

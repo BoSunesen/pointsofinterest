@@ -7,8 +7,7 @@ import (
 )
 
 func main() {
-	cf := GoContextFactory{}
-	webApiInitializer := initialization.NewWebApiInitializer(GoLog{}, cf, GoClientFactory{}, GoWorkerFactory{cf})
+	webApiInitializer := initialization.NewWebApiInitializer(GoLog{}, GoContextFactory{}, GoClientFactory{}, GoWorkerFactory{})
 	webApiInitializer.Initialize()
 	err := http.ListenAndServe(":8080", nil)
 	log.Fatalln(err)
