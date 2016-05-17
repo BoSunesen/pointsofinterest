@@ -6,6 +6,7 @@ import (
 	"github.com/BoSunesen/pointsofinterest/webapi/factories"
 	"github.com/BoSunesen/pointsofinterest/webapi/logging"
 	"github.com/BoSunesen/pointsofinterest/webapi/poicache"
+	"github.com/BoSunesen/pointsofinterest/webapi/poidata"
 	"net/http"
 )
 
@@ -33,8 +34,12 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 
 	poiData := handler.cache.ReadData()
 
+	//TODO Cache parsed data
+	parser := poidata.PoiParser{handler.logger}
+	parsedData := parser.ParsePoiData(ctx, *poiData)
+
 	//TODO Only return POI's matching input (type, location, opening hours)
-	jsonBytes, err := json.Marshal(poiData)
+	jsonBytes, err := json.Marshal(parsedData)
 	if err != nil {
 		return err
 	}

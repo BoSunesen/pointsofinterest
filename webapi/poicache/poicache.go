@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/BoSunesen/pointsofinterest/webapi/factories"
 	"github.com/BoSunesen/pointsofinterest/webapi/logging"
+	"github.com/BoSunesen/pointsofinterest/webapi/poidata"
 	"golang.org/x/net/context"
 	"io/ioutil"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 )
 
 type PoiCache struct {
-	data          *[]PoiData
+	data          *[]poidata.PoiData
 	dataMutex     *sync.RWMutex
 	refreshMutex  *sync.Mutex
 	staleAt       *time.Time
@@ -29,7 +30,7 @@ type PoiCacheRefresher struct {
 }
 
 func NewPoiCache(logger logging.Logger, clientFactory factories.ClientFactory, workerFactory factories.WorkerFactory) (*PoiCache, *PoiCacheRefresher) {
-	poiData := make([]PoiData, 0)
+	poiData := make([]poidata.PoiData, 0)
 	staleAt := time.Now().Add(-42 * time.Hour)
 	refreshAt := time.Now().Add(-42 * time.Hour)
 	cache := &PoiCache{
@@ -112,7 +113,7 @@ func (cache *PoiCache) refresh(ctx context.Context) error {
 		return err
 	}
 
-	poiData := make([]PoiData, 0)
+	poiData := make([]poidata.PoiData, 0)
 	err = json.Unmarshal(poiBytes, &poiData)
 	if err != nil {
 		return err
@@ -175,11 +176,11 @@ func (cache *PoiCache) getRemoteData(ctx context.Context, retries int) ([]byte, 
 	return bytes, nil
 }
 
-func (cache *PoiCache) ReadData() *[]PoiData {
+func (cache *PoiCache) ReadData() *[]poidata.PoiData {
 	cache.dataMutex.RLock()
 	defer cache.dataMutex.RUnlock()
 
-	poiData := make([]PoiData, len(*cache.data))
+	poiData := make([]poidata.PoiData, len(*cache.data))
 	copy(poiData, *cache.data)
 	return &poiData
 }
