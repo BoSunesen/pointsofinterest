@@ -18,16 +18,16 @@ type PoiParser struct {
 //"Applicant": "Mike's Catering"
 //"Address": "860 BROADWAY"
 //"Dayshours": "Mo/Tu/We/Th/Fr:7AM-8AM;Mo/Mo/Tu/Tu/We:9AM-11AM;Su:9AM-2PM;Sa:9AM-3PM;Mo/Mo/Tu/Tu/We:11AM-1PM;Mo-Fr:"
-func (parser PoiParser) ParsePoiData(ctx context.Context, input []PoiData) []ParsedPoiData {
-	output := make([]ParsedPoiData, len(input))
+func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]ParsedPoiData {
+	output := make([]ParsedPoiData, len(*input))
 	skipped := 0
-	for i, poi := range input {
+	for i, poi := range *input {
 		latitude, err := strconv.ParseFloat(poi.Latitude, 64)
 		if err != nil {
 			if len(poi.Longitude) > 1 {
 				parser.Logger.Errorf(ctx, "Error while parsing latitude \"%v\": %v", poi.Latitude, err)
 			} else {
-				parser.Logger.Infof(ctx, "Empty latitude")
+				//TODO parser.Logger.Infof(ctx, "Empty latitude")
 			}
 			skipped++
 			continue
@@ -37,7 +37,7 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input []PoiData) []Par
 			if len(poi.Longitude) > 1 {
 				parser.Logger.Errorf(ctx, "Error while parsing longitude \"%v\": %v", poi.Longitude, err)
 			} else {
-				parser.Logger.Infof(ctx, "Empty longitude")
+				//TODO parser.Logger.Infof(ctx, "Empty longitude")
 			}
 			skipped++
 			continue
@@ -45,30 +45,29 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input []PoiData) []Par
 
 		weekdayOpenings, err := parser.parseMultiWeekdayOpenings(poi.Dayshours)
 		if err != nil {
-			parser.Logger.Errorf(ctx, "Error while parsing opening hours \"%v\": %v", poi.Dayshours, err)
+			//TODO parser.Logger.Errorf(ctx, "Error while parsing opening hours \"%v\": %v", poi.Dayshours, err)
 			weekdayOpenings = nil
 		}
 
 		parsed := ParsedPoiData{
-			Applicant:      poi.Applicant,
-			Address:        poi.Address,
-			Dayshours:      poi.Dayshours,
-			Facilitytype:   poi.Facilitytype,
-			Fooditems:      poi.Fooditems,
-			Latitude:       poi.Latitude,
-			Longitude:      poi.Longitude,
-			Status:         poi.Status,
-			LatitudeFloat:  latitude,
-			LongitudeFloat: longitude,
-			OpeningHours:   weekdayOpenings,
+			Applicant:    poi.Applicant,
+			Address:      poi.Address,
+			Dayshours:    poi.Dayshours,
+			Facilitytype: poi.Facilitytype,
+			Fooditems:    poi.Fooditems,
+			Status:       poi.Status,
+			Latitude:     latitude,
+			Longitude:    longitude,
+			OpeningHours: weekdayOpenings,
 		}
 		output[i-skipped] = parsed
 	}
-	return output[:len(output)-skipped]
+	result := output[:len(output)-skipped]
+	return &result
 }
 
-func (parser PoiParser) parseMultiWeekdayOpenings(weekdayOpeningsString string) (*WeekdayOpenings, error) {
-	weekdayOpenings := &WeekdayOpenings{}
+func (parser PoiParser) parseMultiWeekdayOpenings(weekdayOpeningsString string) (*OpeningHours, error) {
+	weekdayOpenings := &OpeningHours{}
 	weekdayOpeningsSplit := strings.Split(weekdayOpeningsString, ";")
 	for _, v := range weekdayOpeningsSplit {
 		err := parser.parseSingleWeekdayOpenings(v, weekdayOpenings)
@@ -79,7 +78,7 @@ func (parser PoiParser) parseMultiWeekdayOpenings(weekdayOpeningsString string) 
 	return weekdayOpenings, nil
 }
 
-func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string, weekdayOpenings *WeekdayOpenings) error {
+func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string, weekdayOpenings *OpeningHours) error {
 	days := make(map[time.Weekday]bool, 7)
 
 	weekdaysAndTimes := strings.Split(weekdayOpeningsString, ":")
@@ -167,7 +166,7 @@ func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string,
 	return nil
 }
 
-func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]bool, weekdayOpenings *WeekdayOpenings) error {
+func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]bool, weekdayOpenings *OpeningHours) error {
 	openings, err := parser.parseTime(timeString)
 	if err != nil {
 		return err
@@ -197,8 +196,8 @@ func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]boo
 	return nil
 }
 
-func (parser PoiParser) parseTime(timeString string) ([]OpeningHours, error) {
-	openingHours := make([]OpeningHours, 0)
+func (parser PoiParser) parseTime(timeString string) ([]TimeInterval, error) {
+	openingHours := make([]TimeInterval, 0)
 	if len(timeString) == 0 {
 		return nil, errors.New("Time string was empty")
 	}
@@ -217,7 +216,7 @@ func (parser PoiParser) parseTime(timeString string) ([]OpeningHours, error) {
 		if err != nil {
 			return nil, err
 		}
-		openingHours = append(openingHours, OpeningHours{from, to})
+		openingHours = append(openingHours, TimeInterval{from, to})
 	}
 	return openingHours, nil
 }
