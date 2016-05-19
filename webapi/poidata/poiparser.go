@@ -86,7 +86,6 @@ func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string,
 		return errors.New("Weekday openings did not contain exactly one ':'")
 	}
 
-	//TODO Parse time first, weekdays second
 	currentString := weekdaysAndTimes[0]
 	for len(currentString) > 0 {
 		if len(currentString) < 2 {
@@ -100,24 +99,7 @@ func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string,
 			return err
 		}
 
-		switch weekday {
-		case time.Sunday:
-			days[time.Sunday] = true
-		case time.Monday:
-			days[time.Monday] = true
-		case time.Tuesday:
-			days[time.Tuesday] = true
-		case time.Wednesday:
-			days[time.Wednesday] = true
-		case time.Thursday:
-			days[time.Thursday] = true
-		case time.Friday:
-			days[time.Friday] = true
-		case time.Saturday:
-			days[time.Saturday] = true
-		default:
-			return fmt.Errorf("Unknown weekday: %v", weekday)
-		}
+		days[weekday] = true
 
 		if len(currentString) > 0 {
 			var weekdaySplitter string
@@ -174,19 +156,11 @@ func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]boo
 		return err
 	}
 
-	appendIfDaySpecified := func(weekday time.Weekday) {
-		if days[weekday] == true {
+	for weekday, dayIsSpecified := range days {
+		if dayIsSpecified {
 			weekdayOpenings[weekday.String()] = append(weekdayOpenings[weekday.String()], openings...)
 		}
 	}
-
-	appendIfDaySpecified(time.Sunday)
-	appendIfDaySpecified(time.Monday)
-	appendIfDaySpecified(time.Tuesday)
-	appendIfDaySpecified(time.Wednesday)
-	appendIfDaySpecified(time.Thursday)
-	appendIfDaySpecified(time.Friday)
-	appendIfDaySpecified(time.Saturday)
 
 	return nil
 }
