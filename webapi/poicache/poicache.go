@@ -29,7 +29,7 @@ type PoiCacheRefresher struct {
 	cache         *PoiCache
 }
 
-func NewPoiCache(logger logging.Logger, clientFactory factories.ClientFactory, workerFactory factories.WorkerFactory) (*PoiCache, *PoiCacheRefresher) {
+func InitCache(logger logging.Logger, clientFactory factories.ClientFactory, workerFactory factories.WorkerFactory) (*PoiCache, *PoiCacheRefresher) {
 	poiData := make([]poidata.PoiData, 0)
 	staleAt := time.Now().Add(-42 * time.Hour)
 	refreshAt := time.Now().Add(-42 * time.Hour)
@@ -89,21 +89,25 @@ func (cache *PoiCache) immediateRefresh(ctx context.Context) error {
 }
 
 func (cache *PoiCache) backgroundRefresh(ctx context.Context) {
-	cache.logger.Infof(ctx, "Cache needed refresh at %v, waiting for refresh lock", cache.refreshAt)
-
-	cache.refreshMutex.Lock()
-	defer cache.refreshMutex.Unlock()
-
 	if cache.NeedsRefresh() {
-		cache.logger.Infof(ctx, "Refreshing cache")
-		err := cache.refresh(ctx)
-		if err != nil {
-			cache.logger.Infof(ctx, "Error while refreshing cache: %v", err)
+		cache.logger.Infof(ctx, "Cache needed refresh at %v, waiting for refresh lock", cache.refreshAt)
+
+		cache.refreshMutex.Lock()
+		defer cache.refreshMutex.Unlock()
+
+		if cache.NeedsRefresh() {
+			cache.logger.Infof(ctx, "Refreshing cache")
+			err := cache.refresh(ctx)
+			if err != nil {
+				cache.logger.Infof(ctx, "Error while refreshing cache: %v", err)
+			} else {
+				cache.logger.Infof(ctx, "Cache refreshed. Refresh again at %v", cache.refreshAt)
+			}
 		} else {
-			cache.logger.Infof(ctx, "Cache refreshed. Refresh again at %v", cache.refreshAt)
+			cache.logger.Infof(ctx, "Got refresh lock, but cache no longer needs refresh. Refresh again at %v", cache.refreshAt)
 		}
 	} else {
-		cache.logger.Infof(ctx, "Got refresh lock, but cache no longer needs refresh. Refresh again at %v", cache.refreshAt)
+		cache.logger.Infof(ctx, "Cache does not need background refresh, refresh needed at %v", cache.refreshAt)
 	}
 }
 

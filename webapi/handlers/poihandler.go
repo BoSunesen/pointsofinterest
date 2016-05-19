@@ -23,7 +23,7 @@ type PoiHandler struct {
 }
 
 func NewPoiHandler(logger logging.Logger, contextFactory factories.ContextFactory, clientFactory factories.ClientFactory, workerFactory factories.WorkerFactory) *PoiHandler {
-	cache, refresher := poicache.NewPoiCache(logger, clientFactory, workerFactory)
+	cache, refresher := poicache.InitCache(logger, clientFactory, workerFactory)
 	return &PoiHandler{cache, refresher, logger, contextFactory}
 }
 
