@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 )
 
 type PoiHandler struct {
@@ -63,18 +62,18 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 	applyGeographicFilter := latitudeIsParsed && longitudeIsParsed && distanceIsParsed
 	applyOpeningHoursFilter := weekdayIsParsed && hourIsParsed
 
-	poiData := handler.cache.ReadData()
+	rawData := handler.cache.ReadData()
 
 	//TODO Cache parsed data?
 	parser := poidata.PoiParser{handler.logger}
-	output := parser.ParsePoiData(ctx, poiData)
+	output := parser.ParsePoiData(ctx, rawData)
 
 	if applyGeographicFilter {
-		output = filterOutputGeographically(output, latitude, longitude, distance)
+		output = poidata.FilterByLocation(output, latitude, longitude, distance)
 	}
 
 	if applyOpeningHoursFilter {
-		output = filterOutputByOpeningHours(output, weekday, hour)
+		output = poidata.FilterByOpeningHours(output, weekday, hour)
 	}
 
 	//TODO Only return POI's matching input (type, status)
@@ -111,39 +110,4 @@ func (h PoiHandler) parseIntInput(ctx context.Context, queryValues url.Values, k
 		return value, true, nil
 	}
 	return 0, false, nil
-}
-
-//TODO Move filters to poidata
-func filterOutputGeographically(parsedData *[]poidata.ParsedPoiData, latitude, longitude float64, distance int) *[]poidata.ParsedPoiData {
-	geoFilteredData := make([]poidata.ParsedPoiData, 0, len(*parsedData))
-	boundingBox := poidata.CalculateBoundingBox(latitude, longitude, distance)
-	for _, v := range *parsedData {
-		if v.Latitude <= boundingBox.MaxLatitude &&
-			v.Latitude >= boundingBox.MinLatitude &&
-			v.Longitude <= boundingBox.MaxLongitude &&
-			v.Longitude >= boundingBox.MinLongitude {
-			geoFilteredData = append(geoFilteredData, v)
-		}
-	}
-	return &geoFilteredData
-}
-
-func filterOutputByOpeningHours(parsedData *[]poidata.ParsedPoiData, weekdayInt, hour int) *[]poidata.ParsedPoiData {
-	openingsFilteredData := make([]poidata.ParsedPoiData, 0, len(*parsedData))
-	weekdayString := time.Weekday(weekdayInt).String()
-	for _, element := range *parsedData {
-		includeElement := false
-		if element.OpeningHours != nil {
-			for _, interval := range element.OpeningHours[weekdayString] {
-				if interval.OpenFrom <= hour && interval.OpenTo > hour {
-					includeElement = true
-					break
-				}
-			}
-		}
-		if includeElement {
-			openingsFilteredData = append(openingsFilteredData, element)
-		}
-	}
-	return &openingsFilteredData
 }
