@@ -20,18 +20,7 @@ type ParsedPoiData struct {
 	Status       string
 	Latitude     float64
 	Longitude    float64
-	OpeningHours *OpeningHours
-}
-
-//TODO Use map, if it marshals to correct JSON, OpeningHours shouldn't be a pointer then
-type OpeningHours struct {
-	Sunday    []TimeInterval
-	Monday    []TimeInterval
-	Tuesday   []TimeInterval
-	Wednesday []TimeInterval
-	Thursday  []TimeInterval
-	Friday    []TimeInterval
-	Saturday  []TimeInterval
+	OpeningHours map[string][]TimeInterval
 }
 
 type TimeInterval struct {

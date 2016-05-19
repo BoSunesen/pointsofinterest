@@ -74,10 +74,7 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 	}
 
 	if applyOpeningHoursFilter {
-		output, err = filterOutputByOpeningHours(output, weekday, hour)
-		if err != nil {
-			return err
-		}
+		output = filterOutputByOpeningHours(output, weekday, hour)
 	}
 
 	//TODO Only return POI's matching input (type, status)
@@ -116,6 +113,7 @@ func (h PoiHandler) parseIntInput(ctx context.Context, queryValues url.Values, k
 	return 0, false, nil
 }
 
+//TODO Move filters to poidata
 func filterOutputGeographically(parsedData *[]poidata.ParsedPoiData, latitude, longitude float64, distance int) *[]poidata.ParsedPoiData {
 	geoFilteredData := make([]poidata.ParsedPoiData, 0, len(*parsedData))
 	boundingBox := poidata.CalculateBoundingBox(latitude, longitude, distance)
@@ -130,31 +128,13 @@ func filterOutputGeographically(parsedData *[]poidata.ParsedPoiData, latitude, l
 	return &geoFilteredData
 }
 
-func filterOutputByOpeningHours(parsedData *[]poidata.ParsedPoiData, weekday, hour int) (*[]poidata.ParsedPoiData, error) {
+func filterOutputByOpeningHours(parsedData *[]poidata.ParsedPoiData, weekdayInt, hour int) *[]poidata.ParsedPoiData {
 	openingsFilteredData := make([]poidata.ParsedPoiData, 0, len(*parsedData))
-	var openingHoursFunc func(*poidata.OpeningHours) []poidata.TimeInterval
-	switch time.Weekday(weekday) {
-	case time.Sunday:
-		openingHoursFunc = func(openingHours *poidata.OpeningHours) []poidata.TimeInterval { return openingHours.Sunday }
-	case time.Monday:
-		openingHoursFunc = func(openingHours *poidata.OpeningHours) []poidata.TimeInterval { return openingHours.Monday }
-	case time.Tuesday:
-		openingHoursFunc = func(openingHours *poidata.OpeningHours) []poidata.TimeInterval { return openingHours.Tuesday }
-	case time.Wednesday:
-		openingHoursFunc = func(openingHours *poidata.OpeningHours) []poidata.TimeInterval { return openingHours.Wednesday }
-	case time.Thursday:
-		openingHoursFunc = func(openingHours *poidata.OpeningHours) []poidata.TimeInterval { return openingHours.Thursday }
-	case time.Friday:
-		openingHoursFunc = func(openingHours *poidata.OpeningHours) []poidata.TimeInterval { return openingHours.Friday }
-	case time.Saturday:
-		openingHoursFunc = func(openingHours *poidata.OpeningHours) []poidata.TimeInterval { return openingHours.Saturday }
-	default:
-		return nil, fmt.Errorf("Unknown weekday: %v", weekday)
-	}
+	weekdayString := time.Weekday(weekdayInt).String()
 	for _, element := range *parsedData {
 		includeElement := false
 		if element.OpeningHours != nil {
-			for _, interval := range openingHoursFunc(element.OpeningHours) {
+			for _, interval := range element.OpeningHours[weekdayString] {
 				if interval.OpenFrom <= hour && interval.OpenTo > hour {
 					includeElement = true
 					break
@@ -165,5 +145,5 @@ func filterOutputByOpeningHours(parsedData *[]poidata.ParsedPoiData, weekday, ho
 			openingsFilteredData = append(openingsFilteredData, element)
 		}
 	}
-	return &openingsFilteredData, nil
+	return &openingsFilteredData
 }

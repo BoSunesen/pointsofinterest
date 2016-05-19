@@ -46,7 +46,7 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]P
 		weekdayOpenings, err := parser.parseMultiWeekdayOpenings(poi.Dayshours)
 		if err != nil {
 			//TODO parser.Logger.Errorf(ctx, "Error while parsing opening hours \"%v\": %v", poi.Dayshours, err)
-			weekdayOpenings = nil
+			weekdayOpenings = make(map[string][]TimeInterval, 0)
 		}
 
 		parsed := ParsedPoiData{
@@ -66,8 +66,8 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]P
 	return &result
 }
 
-func (parser PoiParser) parseMultiWeekdayOpenings(weekdayOpeningsString string) (*OpeningHours, error) {
-	weekdayOpenings := &OpeningHours{}
+func (parser PoiParser) parseMultiWeekdayOpenings(weekdayOpeningsString string) (map[string][]TimeInterval, error) {
+	weekdayOpenings := make(map[string][]TimeInterval, 7)
 	weekdayOpeningsSplit := strings.Split(weekdayOpeningsString, ";")
 	for _, v := range weekdayOpeningsSplit {
 		err := parser.parseSingleWeekdayOpenings(v, weekdayOpenings)
@@ -78,13 +78,15 @@ func (parser PoiParser) parseMultiWeekdayOpenings(weekdayOpeningsString string) 
 	return weekdayOpenings, nil
 }
 
-func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string, weekdayOpenings *OpeningHours) error {
+func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string, weekdayOpenings map[string][]TimeInterval) error {
 	days := make(map[time.Weekday]bool, 7)
 
 	weekdaysAndTimes := strings.Split(weekdayOpeningsString, ":")
 	if len(weekdaysAndTimes) != 2 {
 		return errors.New("Weekday openings did not contain exactly one ':'")
 	}
+
+	//TODO Parse time first, weekdays second
 	currentString := weekdaysAndTimes[0]
 	for len(currentString) > 0 {
 		if len(currentString) < 2 {
@@ -166,33 +168,26 @@ func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string,
 	return nil
 }
 
-func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]bool, weekdayOpenings *OpeningHours) error {
+func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]bool, weekdayOpenings map[string][]TimeInterval) error {
 	openings, err := parser.parseTime(timeString)
 	if err != nil {
 		return err
 	}
 
-	if days[time.Sunday] == true {
-		weekdayOpenings.Sunday = append(weekdayOpenings.Sunday, openings...)
+	appendIfDaySpecified := func(weekday time.Weekday) {
+		if days[weekday] == true {
+			weekdayOpenings[weekday.String()] = append(weekdayOpenings[weekday.String()], openings...)
+		}
 	}
-	if days[time.Monday] == true {
-		weekdayOpenings.Monday = append(weekdayOpenings.Monday, openings...)
-	}
-	if days[time.Tuesday] == true {
-		weekdayOpenings.Tuesday = append(weekdayOpenings.Tuesday, openings...)
-	}
-	if days[time.Wednesday] == true {
-		weekdayOpenings.Wednesday = append(weekdayOpenings.Wednesday, openings...)
-	}
-	if days[time.Thursday] == true {
-		weekdayOpenings.Thursday = append(weekdayOpenings.Thursday, openings...)
-	}
-	if days[time.Friday] == true {
-		weekdayOpenings.Friday = append(weekdayOpenings.Friday, openings...)
-	}
-	if days[time.Saturday] == true {
-		weekdayOpenings.Saturday = append(weekdayOpenings.Saturday, openings...)
-	}
+
+	appendIfDaySpecified(time.Sunday)
+	appendIfDaySpecified(time.Monday)
+	appendIfDaySpecified(time.Tuesday)
+	appendIfDaySpecified(time.Wednesday)
+	appendIfDaySpecified(time.Thursday)
+	appendIfDaySpecified(time.Friday)
+	appendIfDaySpecified(time.Saturday)
+
 	return nil
 }
 
