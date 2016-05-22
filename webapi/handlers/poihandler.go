@@ -84,6 +84,7 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 
 	handler.logger.Debugf(ctx, "Returning %v elements", len(*output))
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	fmt.Fprint(w, string(jsonBytes))
 	return nil
 }
