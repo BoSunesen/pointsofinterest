@@ -77,7 +77,7 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 	}
 
 	//TODO Only return POI's matching input (type, status)
-	jsonBytes, err := json.Marshal(*output)
+	jsonBytes, err := json.MarshalIndent(*output, "", " ")
 	if err != nil {
 		return err
 	}
