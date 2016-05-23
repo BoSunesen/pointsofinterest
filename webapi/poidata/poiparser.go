@@ -14,10 +14,6 @@ type PoiParser struct {
 	Logger logging.Logger
 }
 
-//TODO Test ParsePoiData
-//"Applicant": "Mike's Catering"
-//"Address": "860 BROADWAY"
-//"Dayshours": "Mo/Tu/We/Th/Fr:7AM-8AM;Mo/Mo/Tu/Tu/We:9AM-11AM;Su:9AM-2PM;Sa:9AM-3PM;Mo/Mo/Tu/Tu/We:11AM-1PM;Mo-Fr:"
 func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]ParsedPoiData {
 	errorsFound := make([]string, 0)
 	output := make([]ParsedPoiData, 0, len(*input))
@@ -40,7 +36,7 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]P
 			continue
 		}
 
-		weekdayOpenings, err := parser.parseMultiWeekdayOpenings(poi.Dayshours)
+		weekdayOpenings, err := parseMultiWeekdayOpenings(poi.Dayshours)
 		if err != nil {
 			errorsFound = append(errorsFound, fmt.Sprintf("Error while parsing opening hours \"%v\" of \"%v\": %v", poi.Dayshours, poi.Applicant, err))
 			weekdayOpenings = make(map[string][]TimeInterval, 0)
@@ -63,19 +59,21 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]P
 	return &output
 }
 
-func (parser PoiParser) parseMultiWeekdayOpenings(weekdayOpeningsString string) (map[string][]TimeInterval, error) {
+func parseMultiWeekdayOpenings(weekdayOpeningsString string) (map[string][]TimeInterval, error) {
 	weekdayOpenings := make(map[string][]TimeInterval, 7)
 	weekdayOpeningsSplit := strings.Split(weekdayOpeningsString, ";")
 	for _, v := range weekdayOpeningsSplit {
-		err := parser.parseSingleWeekdayOpenings(v, weekdayOpenings)
-		if err != nil {
-			return nil, err
+		if v != "" {
+			err := parseSingleWeekdayOpenings(v, weekdayOpenings)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return weekdayOpenings, nil
 }
 
-func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string, weekdayOpenings map[string][]TimeInterval) error {
+func parseSingleWeekdayOpenings(weekdayOpeningsString string, weekdayOpenings map[string][]TimeInterval) error {
 	days := make(map[time.Weekday]bool, 7)
 
 	weekdaysAndTimes := strings.Split(weekdayOpeningsString, ":")
@@ -135,7 +133,7 @@ func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string,
 			}
 		}
 	}
-	err := parser.addTimeSlot(weekdaysAndTimes[1], days, weekdayOpenings)
+	err := addTimeSlot(weekdaysAndTimes[1], days, weekdayOpenings)
 	if err != nil {
 		return err
 	}
@@ -146,8 +144,8 @@ func convertToWeekday(index int) time.Weekday {
 	return time.Weekday(index % 7)
 }
 
-func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]bool, weekdayOpenings map[string][]TimeInterval) error {
-	openings, nextDaysOpenings, err := parser.parseTime(timeString)
+func addTimeSlot(timeString string, days map[time.Weekday]bool, weekdayOpenings map[string][]TimeInterval) error {
+	openings, nextDaysOpenings, err := parseTime(timeString)
 	if err != nil {
 		return err
 	}
@@ -165,7 +163,7 @@ func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]boo
 	return nil
 }
 
-func (parser PoiParser) parseTime(timeString string) ([]TimeInterval, []TimeInterval, error) {
+func parseTime(timeString string) ([]TimeInterval, []TimeInterval, error) {
 	openingHours := make([]TimeInterval, 0)
 	nextDaysOpeningHours := make([]TimeInterval, 0)
 	if len(timeString) == 0 {

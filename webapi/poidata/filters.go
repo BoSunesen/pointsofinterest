@@ -2,7 +2,6 @@ package poidata
 
 import "time"
 
-//TODO Test filters
 func FilterByLocation(parsedData *[]ParsedPoiData, latitude, longitude float64, distance int) *[]ParsedPoiData {
 	geoFilteredData := make([]ParsedPoiData, 0, len(*parsedData))
 	boundingBox := CalculateBoundingBox(latitude, longitude, distance)

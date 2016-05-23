@@ -25,12 +25,18 @@ func TestConvertRadiansToDegrees(t *testing.T) {
 
 func TestCalculateBoundingBox(t *testing.T) {
 	precision := 1 << 20
-	//TODO Test more
-	box := CalculateBoundingBox(37.7760487, -122.423939, 100)
-	compareFloats(t, 37.7769482, box.MaxLatitude, precision)
-	compareFloats(t, 37.7751492, box.MinLatitude, precision)
-	compareFloats(t, -122.422801, box.MaxLongitude, precision)
-	compareFloats(t, -122.425077, box.MinLongitude, precision)
+	//Validation source: http://www.movable-type.co.uk/scripts/latlong.html
+	box1 := CalculateBoundingBox(37.7760487, -122.423939, 100)
+	compareFloats(t, 37.7769482, box1.MaxLatitude, precision)
+	compareFloats(t, 37.7751492, box1.MinLatitude, precision)
+	compareFloats(t, -122.422801, box1.MaxLongitude, precision)
+	compareFloats(t, -122.425077, box1.MinLongitude, precision)
+
+	box2 := CalculateBoundingBox(-37.7760487, 122.423939, 100)
+	compareFloats(t, -37.7751492, box2.MaxLatitude, precision)
+	compareFloats(t, -37.7769482, box2.MinLatitude, precision)
+	compareFloats(t, 122.425077, box2.MaxLongitude, precision)
+	compareFloats(t, 122.422801, box2.MinLongitude, precision)
 }
 
 func compareFloats(t *testing.T, expected, actual float64, precision int) {
