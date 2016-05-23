@@ -60,7 +60,7 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 	}
 
 	applyGeographicFilter := latitudeIsParsed && longitudeIsParsed && distanceIsParsed
-	applyOpeningHoursFilter := weekdayIsParsed && hourIsParsed
+	applyOpeningHoursFilter := weekdayIsParsed || hourIsParsed
 
 	rawData := handler.cache.ReadData()
 
@@ -94,11 +94,11 @@ func (h PoiHandler) parseFloatInput(ctx context.Context, queryValues url.Values,
 	if len(valueString) > 0 {
 		value, err := strconv.ParseFloat(valueString, 64)
 		if err != nil {
-			return 0, false, fmt.Errorf("Error while parsing %v: %v", key, err)
+			return -1, false, fmt.Errorf("Error while parsing %v: %v", key, err)
 		}
 		return value, true, nil
 	}
-	return 0, false, nil
+	return -1, false, nil
 }
 
 func (h PoiHandler) parseIntInput(ctx context.Context, queryValues url.Values, key string) (int, bool, error) {
@@ -106,9 +106,9 @@ func (h PoiHandler) parseIntInput(ctx context.Context, queryValues url.Values, k
 	if len(valueString) > 0 {
 		value, err := strconv.Atoi(valueString)
 		if err != nil {
-			return 0, false, fmt.Errorf("Error while parsing %v: %v", key, err)
+			return -1, false, fmt.Errorf("Error while parsing %v: %v", key, err)
 		}
 		return value, true, nil
 	}
-	return 0, false, nil
+	return -1, false, nil
 }

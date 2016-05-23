@@ -130,13 +130,8 @@ func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string,
 					end = int(weekdayEnd)
 				}
 				for i := int(weekday); i <= end; i++ {
-					var nextDay time.Weekday
-					if i == 7 {
-						nextDay = time.Sunday
-					} else {
-						nextDay = time.Weekday(i)
-					}
-					days[nextDay] = true
+					intervalWeekday := convertToWeekday(i)
+					days[intervalWeekday] = true
 				}
 			default:
 				return fmt.Errorf("Illegal weekday splitter: %v", weekdaySplitter)
@@ -150,8 +145,12 @@ func (parser PoiParser) parseSingleWeekdayOpenings(weekdayOpeningsString string,
 	return nil
 }
 
+func convertToWeekday(index int) time.Weekday {
+	return time.Weekday(index % 7)
+}
+
 func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]bool, weekdayOpenings map[string][]TimeInterval) error {
-	openings, err := parser.parseTime(timeString)
+	openings, nextDaysOpenings, err := parser.parseTime(timeString)
 	if err != nil {
 		return err
 	}
@@ -159,35 +158,43 @@ func (parser PoiParser) addTimeSlot(timeString string, days map[time.Weekday]boo
 	for weekday, dayIsSpecified := range days {
 		if dayIsSpecified {
 			weekdayOpenings[weekday.String()] = append(weekdayOpenings[weekday.String()], openings...)
+			if len(nextDaysOpenings) > 0 {
+				nextDay := convertToWeekday(int(weekday) + 1)
+				weekdayOpenings[nextDay.String()] = append(weekdayOpenings[nextDay.String()], nextDaysOpenings...)
+			}
 		}
 	}
 
 	return nil
 }
 
-func (parser PoiParser) parseTime(timeString string) ([]TimeInterval, error) {
+func (parser PoiParser) parseTime(timeString string) ([]TimeInterval, []TimeInterval, error) {
 	openingHours := make([]TimeInterval, 0)
+	nextDaysOpeningHours := make([]TimeInterval, 0)
 	if len(timeString) == 0 {
-		return nil, errors.New("Time string was empty")
+		return nil, nil, errors.New("Time string was empty")
 	}
 
 	timeStringElements := strings.Split(timeString, "/")
 	for _, timeStringElement := range timeStringElements {
 		fromAndToStrings := strings.Split(timeStringElement, "-")
 		if len(fromAndToStrings) != 2 {
-			return nil, fmt.Errorf("Time interval (%v) does not contain exactly one '-'", timeStringElement)
+			return nil, nil, fmt.Errorf("Time interval (%v) does not contain exactly one '-'", timeStringElement)
 		}
 		from, err := parseTimeOfDay(fromAndToStrings[0])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		to, err := parseTimeOfDay(fromAndToStrings[1])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		openingHours = append(openingHours, TimeInterval{from, to})
+		if from > to {
+			nextDaysOpeningHours = append(nextDaysOpeningHours, TimeInterval{0, to})
+		}
 	}
-	return openingHours, nil
+	return openingHours, nextDaysOpeningHours, nil
 }
 
 func parseTimeOfDay(timeOfDayString string) (int, error) {
