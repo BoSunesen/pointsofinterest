@@ -11,10 +11,10 @@ in order to serve requests as fast as possible.
 - Use of data provider application token without exposing the token in client source files
 
 ###Future development
-- Automatic background refresh, to keep the cache fresh during downtime
+- Parse data in the background during cache refresh
+- Automatic background cache refresh, to keep the cache fresh during downtime
 - More types of POI data
 - More filtering options
-- Parse data in the background
 
 ###My experience with Go
 This was my first time coding in Go, hopefully it will not be my last :-)
