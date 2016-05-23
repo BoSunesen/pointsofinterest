@@ -1,6 +1,6 @@
 # Points of Interest
 Server that caches POI data in the background
-in order to serve requests as fast as possible.
+in order to serve requests as fast as possible. Implemented in Go.
 
 ###Goals
 - Provide faster access to POI data
