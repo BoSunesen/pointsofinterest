@@ -11,7 +11,11 @@ in order to serve requests as fast as possible. Implemented in Go.
 - Use of data provider application token without exposing the token in client source files
 
 ###Setup
-Implementations of the following interfaces must be provided in order to initialize the back-end:
+Implementations of the following interfaces must be provided to
+`github.com/BoSunesen/pointsofinterest/webapi/initialization.NewWebApiInitializer`
+at which point
+`func (i WebApiInitializer) Initialize()`
+can be called in order to initialize the back-end:
 - `github.com/BoSunesen/pointsofinterest/webapi/logging.Logger`
 - `github.com/BoSunesen/pointsofinterest/webapi/factories.ContextFactory`
 - `github.com/BoSunesen/pointsofinterest/webapi/factories.ClientFactory`
