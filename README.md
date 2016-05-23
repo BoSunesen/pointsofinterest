@@ -25,7 +25,7 @@ The project includes a main package that starts the back-end using very simple i
 of the interfaces. See [Links](#links) for a Google App Engine initialization project.
 
 ###Future development
-- Remove dependency to `golang.org/x/net/context`
+- Remove dependency on `golang.org/x/net/context`
 - Parse data in the background during cache refresh
 - Automatic background cache refresh, to keep the cache fresh during downtime
 - More types of POI data
