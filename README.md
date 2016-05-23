@@ -17,6 +17,9 @@ Implementations of the following interfaces must be provided in order to initial
 - `github.com/BoSunesen/pointsofinterest/webapi/factories.ClientFactory`
 - `github.com/BoSunesen/pointsofinterest/webapi/factories.WorkerFactory`
 
+See https://godoc.org/github.com/BoSunesen/pointsofinterest/webapi/factories for more information
+on the factory interfaces, and https://godoc.org/github.com/BoSunesen/pointsofinterest/webapi/logging
+for Logger interface.
 The project includes a main package that starts the back-end using very simple implementations
 of the interfaces. See [Links](#Links) for a Google App Engine initialization project.
 
