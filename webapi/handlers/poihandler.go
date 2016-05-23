@@ -64,7 +64,6 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 
 	rawData := handler.cache.ReadData()
 
-	//TODO Cache parsed data?
 	parser := poidata.PoiParser{handler.logger}
 	output := parser.ParsePoiData(ctx, rawData)
 
@@ -76,7 +75,6 @@ func (handler *PoiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) err
 		output = poidata.FilterByOpeningHours(output, weekday, hour)
 	}
 
-	//TODO Only return POI's matching input (type, status)
 	jsonBytes, err := json.MarshalIndent(*output, "", " ")
 	if err != nil {
 		return err

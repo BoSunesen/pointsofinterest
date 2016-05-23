@@ -19,15 +19,14 @@ type PoiParser struct {
 //"Address": "860 BROADWAY"
 //"Dayshours": "Mo/Tu/We/Th/Fr:7AM-8AM;Mo/Mo/Tu/Tu/We:9AM-11AM;Su:9AM-2PM;Sa:9AM-3PM;Mo/Mo/Tu/Tu/We:11AM-1PM;Mo-Fr:"
 func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]ParsedPoiData {
-	output := make([]ParsedPoiData, len(*input))
+	errorsFound := make([]string, 0)
+	output := make([]ParsedPoiData, 0, len(*input))
 	skipped := 0
-	for i, poi := range *input {
+	for _, poi := range *input {
 		latitude, err := strconv.ParseFloat(poi.Latitude, 64)
 		if err != nil {
 			if len(poi.Longitude) > 1 {
 				parser.Logger.Errorf(ctx, "Error while parsing latitude \"%v\": %v", poi.Latitude, err)
-			} else {
-				//TODO parser.Logger.Infof(ctx, "Empty latitude")
 			}
 			skipped++
 			continue
@@ -36,8 +35,6 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]P
 		if err != nil {
 			if len(poi.Longitude) > 1 {
 				parser.Logger.Errorf(ctx, "Error while parsing longitude \"%v\": %v", poi.Longitude, err)
-			} else {
-				//TODO parser.Logger.Infof(ctx, "Empty longitude")
 			}
 			skipped++
 			continue
@@ -45,7 +42,7 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]P
 
 		weekdayOpenings, err := parser.parseMultiWeekdayOpenings(poi.Dayshours)
 		if err != nil {
-			//TODO parser.Logger.Errorf(ctx, "Error while parsing opening hours \"%v\": %v", poi.Dayshours, err)
+			errorsFound = append(errorsFound, fmt.Sprintf("Error while parsing opening hours \"%v\" of \"%v\": %v", poi.Dayshours, poi.Applicant, err))
 			weekdayOpenings = make(map[string][]TimeInterval, 0)
 		}
 
@@ -60,10 +57,10 @@ func (parser PoiParser) ParsePoiData(ctx context.Context, input *[]PoiData) *[]P
 			Longitude:    longitude,
 			OpeningHours: weekdayOpenings,
 		}
-		output[i-skipped] = parsed
+		output = append(output, parsed)
 	}
-	result := output[:len(output)-skipped]
-	return &result
+	parser.Logger.Debugf(ctx, "Errors found: %v", strings.Join(errorsFound, "; "))
+	return &output
 }
 
 func (parser PoiParser) parseMultiWeekdayOpenings(weekdayOpeningsString string) (map[string][]TimeInterval, error) {
