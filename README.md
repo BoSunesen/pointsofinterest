@@ -22,7 +22,7 @@ for more information on the Logger interface and
 see https://godoc.org/github.com/BoSunesen/pointsofinterest/webapi/factories
 for more information on the factory interfaces.
 The project includes a main package that starts the back-end using very simple implementations
-of the interfaces. See [Links](#Links) for a Google App Engine initialization project.
+of the interfaces. See [Links](#links) for a Google App Engine initialization project.
 
 ###Future development
 - Remove dependency to `golang.org/x/net/context`
