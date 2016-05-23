@@ -10,7 +10,18 @@ in order to serve requests as fast as possible.
 - Filtering POI data according to client request parameters
 - Use of data provider application token without exposing the token in client source files
 
+###Setup
+Implementations of the following interfaces must be provided in order to initialize the back-end:
+- `github.com/BoSunesen/pointsofinterest/webapi/logging.Logger`
+- `github.com/BoSunesen/pointsofinterest/webapi/factories.ContextFactory`
+- `github.com/BoSunesen/pointsofinterest/webapi/factories.ClientFactory`
+- `github.com/BoSunesen/pointsofinterest/webapi/factories.WorkerFactory`
+
+The project includes a main package that starts the back-end using very simple implementations
+of the interfaces. See [Links](#Links) for a Google App Engine initialization project.
+
 ###Future development
+- Remove dependency to `golang.org/x/net/context`
 - Parse data in the background during cache refresh
 - Automatic background cache refresh, to keep the cache fresh during downtime
 - More types of POI data
@@ -28,3 +39,4 @@ The hosted application can be found here:
 - Back-end: https://points-of-interest-1308.appspot.com/poi
 - Front-end: https://points-of-interest-map.appspot.com
 
+Me: https://www.linkedin.com/in/bosunesen
