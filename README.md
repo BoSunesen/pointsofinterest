@@ -12,14 +12,15 @@ in order to serve requests as fast as possible. Implemented in Go.
 
 ###Setup
 Implementations of the following interfaces must be provided to
-`github.com/BoSunesen/pointsofinterest/webapi/initialization.NewWebApiInitializer`
-at which point
-`func (i WebApiInitializer) Initialize()`
-can be called in order to initialize the back-end:
+`github.com/BoSunesen/pointsofinterest/webapi/initialization.NewWebApiInitializer()`:
+
 - `github.com/BoSunesen/pointsofinterest/webapi/logging.Logger`
 - `github.com/BoSunesen/pointsofinterest/webapi/factories.ContextFactory`
 - `github.com/BoSunesen/pointsofinterest/webapi/factories.ClientFactory`
 - `github.com/BoSunesen/pointsofinterest/webapi/factories.WorkerFactory`
+
+`NewWebApiInitializer()` returns a WebApiInitializer which can be used to call
+`func (i WebApiInitializer) Initialize()` in order to initialize the back-end.
 
 See https://godoc.org/github.com/BoSunesen/pointsofinterest/webapi/logging
 for more information on the Logger interface and
